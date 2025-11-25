@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Data ETL Pipeline</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --gray: #95a5a6;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            font-family: 'Poppins', sans-serif;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        
+        .tagline {
+            color: var(--gray);
+            font-size: 1.2rem;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 900px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .card-title {
+            font-family: 'Poppins', sans-serif;
+            color: var(--primary);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-danger {
+            background: var(--danger);
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .btn-success {
+            background: var(--success);
+        }
+        
+        .btn-success:hover {
+            background: #27ae60;
+        }
+        
+        .process-log {
+            background: var(--light);
+            padding: 15px;
+            border-radius: 8px;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        .log-entry {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .log-time {
+            color: var(--gray);
+            margin-right: 10px;
+        }
+        
+        .log-success {
+            color: var(--success);
+        }
+        
+        .log-error {
+            color: var(--danger);
+        }
+        
+        .log-info {
+            color: var(--secondary);
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .data-table th, .data-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .data-table th {
+            background-color: var(--light);
+            font-weight: 600;
+        }
+        
+        .data-table tr:hover {
+            background-color: rgba(236, 240, 241, 0.5);
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 900px) {
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        .stat-card {
+            background: var(--light);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            color: var(--gray);
+            font-size: 14px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        .api-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .api-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab.active {
+            border-bottom: 3px solid var(--secondary);
+            color: var(--secondary);
+            font-weight: 500;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .weather-icon {
+            font-size: 20px;
+            margin-right: 5px;
+        }
+        
+        .city-selector {
+            margin-bottom: 15px;
+        }
+        
+        .city-selector select {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .severity-critical {
+            color: var(--danger);
+            font-weight: bold;
+        }
+        
+        .severity-warning {
+            color: var(--warning);
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Advanced Weather Data ETL Pipeline</h1>
+            <p class="tagline">Extract, Transform, Load with Quality Assessment & Anomaly Detection</p>
+        </header>
+        
+        <div class="dashboard">
+            <div class="card">
+                <div class="card-title">
+                    <span>ETL Process Control</span>
+                </div>
+                
+                <div class="city-selector">
+                    <select id="city-select">
+                        <option value="London">London</option>
+                        <option value="New York">New York</option>
+                        <option value="Johannesburg">Johannesburg</option>
+                        <option value="Nelspruit">Nelspruit</option>
+                        <option value="Ermelo">Ermelo</option>
+                        <option value="Cape Town">Cape Town</option>
+                        <option value="Winchester Hills">Winchester Hills</option>
+                        <option value="Pretoria">Pretoria</option>
+                        <option value="Durban">Durban</option>
+                        
+                        
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="batch-mode" style="margin-right: 5px;">
+                        Batch Mode (Process Multiple Cities)
+                    </label>
+                </div>
+                
+                <div class="control-group">
+                    <label>Data Quality Threshold: <span id="quality-value">80%</span></label>
+                    <input type="range" id="quality-threshold" min="0" max="100" value="80" style="width: 100%;">
+                </div>
+                
+                <div class="api-form">
+                    <input type="text" class="api-input" id="api-url" placeholder="Enter API URL" value="https://api.openweathermap.org/data/2.5/weather" readonly>
+                    <button class="btn" id="run-etl">Run ETL</button>
+                </div>
+                
+                <div class="process-log" id="process-log">
+                    <div class="log-entry">
+                        <span class="log-time">[00:00:00]</span>
+                        <span class="log-info">System initialized. Ready to run ETL process.</span>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn btn-success" id="view-data">View Data</button>
+                    <button class="btn btn-danger" id="clear-data">Clear Data</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">
+                    <span>Weather Data Statistics</span>
+                </div>
+                
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Records</div>
+                        <div class="stat-value" id="total-records">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Last Updated</div>
+                        <div class="stat-value" id="last-updated">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">API Status</div>
+                        <div class="stat-value" id="api-status">Inactive</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">DB Status</div>
+                        <div class="stat-value" id="db-status">Inactive</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Data Quality Score</div>
+                        <div class="stat-value" id="data-quality">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Processing Speed</div>
+                        <div class="stat-value" id="processing-speed">-</div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="data-chart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="tabs">
+                <div class="tab active" data-tab="extracted">Extracted Data</div>
+                <div class="tab" data-tab="transformed">Transformed Data</div>
+                <div class="tab" data-tab="loaded">Loaded Data</div>
+                <div class="tab" data-tab="anomalies">Data Anomalies</div>
+                <div class="tab" data-tab="forecast">Forecast Analysis</div>
+            </div>
+            
+            <div class="tab-content active" id="extracted">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>City</th>
+                            <th>Temperature</th>
+                            <th>Humidity</th>
+                            <th>Pressure</th>
+                            <th>Wind Speed</th>
+                            <th>Weather</th>
+                        </tr>
+                    </thead>
+                    <tbody id="extracted-data">
+                        <tr>
+                            <td colspan="6" style="text-align: center;">No data extracted yet</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="tab-content" id="transformed">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>City</th>
+                            <th>Temperature</th>
+                            <th>Humidity</th>
+                            <th>Pressure</th>
+                            <th>Wind Speed</th>
+                            <th>Conditions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transformed-data">
+                        <tr>
+                            <td colspan="6" style="text-align: center;">No data transformed yet</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="tab-content" id="loaded">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>City</th>
+                            <th>Temperature</th>
+                            <th>Humidity</th>
+                            <th>Pressure</th>
+                            <th>Wind Speed</th>
+                            <th>Conditions</th>
+                            <th>Load Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="loaded-data">
+                        <tr>
+                            <td colspan="7" style="text-align: center;">No data loaded yet</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="tab-content" id="anomalies">
+                <div style="margin-bottom: 20px;">
+                    <p><strong>Anomaly Detection Rules:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>Temperature outside -50°C to 60°C range</li>
+                        <li>Humidity outside 0% to 100% range</li>
+                        <li>Pressure outside 900 to 1100 hPa range</li>
+                        <li>Wind speed above 50 m/s</li>
+                    </ul>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>City</th>
+                            <th>Anomaly Type</th>
+                            <th>Value</th>
+                            <th>Expected Range</th>
+                            <th>Severity</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="anomalies-data">
+                        <tr>
+                            <td colspan="6" style="text-align: center;">No anomalies detected</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="tab-content" id="forecast">
+                <div style="margin-bottom: 20px;">
+                    <button class="btn" id="get-forecast">Get 5-Day Forecast</button>
+                    <span style="margin-left: 15px; color: var(--gray);">Click to fetch weather forecast for selected city</span>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Min Temp</th>
+                            <th>Max Temp</th>
+                            <th>Weather</th>
+                            <th>Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="forecast-data">
+                        <tr>
+                            <td colspan="5" style="text-align: center;">No forecast data available</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Advanced Weather Data ETL Pipeline | OpenWeatherMap API Integration | © 2025</p>
+        </footer>
+    </div>
+
+    <script>
+        // DOM elements
+        const runEtlBtn = document.getElementById('run-etl');
+        const viewDataBtn = document.getElementById('view-data');
+        const clearDataBtn = document.getElementById('clear-data');
+        const apiUrlInput = document.getElementById('api-url');
+        const citySelect = document.getElementById('city-select');
+        const processLog = document.getElementById('process-log');
+        const totalRecords = document.getElementById('total-records');
+        const lastUpdated = document.getElementById('last-updated');
+        const apiStatus = document.getElementById('api-status');
+        const dbStatus = document.getElementById('db-status');
+        const extractedData = document.getElementById('extracted-data');
+        const transformedData = document.getElementById('transformed-data');
+        const loadedData = document.getElementById('loaded-data');
+        const anomaliesData = document.getElementById('anomalies-data');
+        const forecastData = document.getElementById('forecast-data');
+        const getForecastBtn = document.getElementById('get-forecast');
+        const batchModeCheckbox = document.getElementById('batch-mode');
+        const qualityThreshold = document.getElementById('quality-threshold');
+        const qualityValue = document.getElementById('quality-value');
+        const dataQuality = document.getElementById('data-quality');
+        const processingSpeed = document.getElementById('processing-speed');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        // API Key (using OpenWeatherMap API)
+        const apiKey = '58bd1a9ec552a4359de475ec6796771b';
+        
+        // Global variables for enhanced features
+        let processedData = [];
+        let detectedAnomalies = [];
+        
+        // Quality threshold slider
+        qualityThreshold.addEventListener('input', (e) => {
+            qualityValue.textContent = e.target.value + '%';
+        });
+        
+        // Initialize chart
+        const ctx = document.getElementById('data-chart').getContext('2d');
+        const dataChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Extracted', 'Transformed', 'Loaded'],
+                datasets: [{
+                    label: 'Data Records',
+                    data: [0, 0, 0],
+                    backgroundColor: [
+                        '#3498db',
+                        '#f39c12',
+                        '#2ecc71'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        
+        // Log function
+        function addLog(message, type = 'info') {
+            const now = new Date();
+            const timeString = `[${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}]`;
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `<span class="log-time">${timeString}</span> <span class="log-${type}">${message}</span>`;
+            
+            processLog.appendChild(logEntry);
+            processLog.scrollTop = processLog.scrollHeight;
+        }
+        
+        // Tab switching
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('data-tab');
+                
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(tc => tc.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        
+        // Get weather icon based on condition
+        function getWeatherIcon(condition) {
+            switch(condition.toLowerCase()) {
+                case 'clear':
+                    return '<i class="fas fa-sun weather-icon" style="color: #f39c12;"></i>';
+                case 'clouds':
+                    return '<i class="fas fa-cloud weather-icon" style="color: #7f8c8d;"></i>';
+                case 'rain':
+                    return '<i class="fas fa-cloud-rain weather-icon" style="color: #3498db;"></i>';
+                case 'snow':
+                    return '<i class="fas fa-snowflake weather-icon" style="color: #ecf0f1;"></i>';
+                case 'thunderstorm':
+                    return '<i class="fas fa-bolt weather-icon" style="color: #f1c40f;"></i>';
+                case 'drizzle':
+                    return '<i class="fas fa-cloud-drizzle weather-icon" style="color: #5dade2;"></i>';
+                case 'mist':
+                case 'smoke':
+                case 'haze':
+                case 'fog':
+                    return '<i class="fas fa-smog weather-icon" style="color: #bdc3c7;"></i>';
+                default:
+                    return '<i class="fas fa-cloud weather-icon" style="color: #7f8c8d;"></i>';
+            }
+        }
+        
+        // Data quality assessment
+        function assessDataQuality(data) {
+            let qualityScore = 100;
+            let issues = [];
+            
+            // Check temperature range
+            if (data.main.temp < -50 || data.main.temp > 60) {
+                qualityScore -= 20;
+                issues.push('Temperature out of range');
+            }
+            
+            // Check humidity range
+            if (data.main.humidity < 0 || data.main.humidity > 100) {
+                qualityScore -= 15;
+                issues.push('Humidity out of range');
+            }
+            
+            // Check pressure range
+            if (data.main.pressure < 900 || data.main.pressure > 1100) {
+                qualityScore -= 15;
+                issues.push('Pressure out of range');
+            }
+            
+            // Check wind speed
+            if (data.wind && data.wind.speed > 50) {
+                qualityScore -= 10;
+                issues.push('Wind speed unusually high');
+            }
+            
+            // Check for missing fields
+            if (!data.weather || !data.weather[0] || !data.weather[0].description) {
+                qualityScore -= 20;
+                issues.push('Missing weather description');
+            }
+            
+            return { score: Math.max(qualityScore, 0), issues };
+        }
+        
+        // Anomaly detection
+        function detectAnomalies(data) {
+            const anomalies = [];
+            
+            if (data.main.temp < -50 || data.main.temp > 60) {
+                anomalies.push({
+                    city: data.name,
+                    type: 'Temperature',
+                    value: data.main.temp + '°C',
+                    range: '-50°C to 60°C',
+                    severity: data.main.temp < -60 || data.main.temp > 70 ? 'Critical' : 'Warning',
+                    timestamp: new Date().toLocaleString()
+                });
+            }
+            
+            if (data.main.humidity < 0 || data.main.humidity > 100) {
+                anomalies.push({
+                    city: data.name,
+                    type: 'Humidity',
+                    value: data.main.humidity + '%',
+                    range: '0% to 100%',
+                    severity: 'Critical',
+                    timestamp: new Date().toLocaleString()
+                });
+            }
+            
+            if (data.main.pressure < 900 || data.main.pressure > 1100) {
+                anomalies.push({
+                    city: data.name,
+                    type: 'Pressure',
+                    value: data.main.pressure + ' hPa',
+                    range: '900 to 1100 hPa',
+                    severity: 'Warning',
+                    timestamp: new Date().toLocaleString()
+                });
+            }
+            
+            if (data.wind && data.wind.speed > 50) {
+                anomalies.push({
+                    city: data.name,
+                    type: 'Wind Speed',
+                    value: data.wind.speed + ' m/s',
+                    range: '0 to 50 m/s',
+                    severity: data.wind.speed > 70 ? 'Critical' : 'Warning',
+                    timestamp: new Date().toLocaleString()
+                });
+            }
+            
+            return anomalies;
+        }
+        
+        // Update anomalies table
+        function updateAnomaliesTable() {
+            anomaliesData.innerHTML = '';
+            
+            if (detectedAnomalies.length === 0) {
+                anomaliesData.innerHTML = '<tr><td colspan="6" style="text-align: center;">No anomalies detected</td></tr>';
+                return;
+            }
+            
+            detectedAnomalies.forEach(anomaly => {
+                const row = document.createElement('tr');
+                const severityClass = anomaly.severity === 'Critical' ? 'severity-critical' : 'severity-warning';
+                row.innerHTML = `
+                    <td>${anomaly.city}</td>
+                    <td>${anomaly.type}</td>
+                    <td>${anomaly.value}</td>
+                    <td>${anomaly.range}</td>
+                    <td class="${severityClass}">${anomaly.severity}</td>
+                    <td>${anomaly.timestamp}</td>
+                `;
+                anomaliesData.appendChild(row);
+            });
+        }
+        
+        // Simulate ETL process with OpenWeatherMap API
+        runEtlBtn.addEventListener('click', async () => {
+            const selectedCity = citySelect.value;
+            const isBatchMode = batchModeCheckbox.checked;
+            const cities = isBatchMode ? ['London', 'New York', 'Johannesburg', 'Cape Town'] : [selectedCity];
+            
+            addLog('Starting ETL process...', 'info');
+            const startTime = Date.now();
+            apiStatus.textContent = 'Connecting...';
+            
+            let totalProcessed = 0;
+            let totalQualityScore = 0;
+            
+            for (const city of cities) {
+                try {
+                    const apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+                    
+                    // Extract data from OpenWeatherMap API
+                    addLog(`Extracting weather data for: ${city}`, 'info');
+                    const response = await fetch(apiUrl);
+                    
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            throw new Error('Invalid API key. Please check your API key.');
+                        } else if (response.status === 404) {
+                            throw new Error(`City ${city} not found. Please check the city name and try again.`);
+                        } else {
+                            throw new Error('Unable to fetch weather data. Please try again later.');
+                        }
+                    }
+                    
+                    const data = await response.json();
+                    addLog(`Successfully extracted weather data for ${data.name}`, 'success');
+                    
+                    // Data quality assessment
+                    const qualityResult = assessDataQuality(data);
+                    totalQualityScore += qualityResult.score;
+                    
+                    if (qualityResult.score < parseInt(qualityThreshold.value)) {
+                        addLog(`Data quality below threshold for ${city}: ${qualityResult.score}% (Issues: ${qualityResult.issues.join(', ')})`, 'error');
+                    } else {
+                        addLog(`Data quality passed for ${city}: ${qualityResult.score}%`, 'success');
+                    }
+                    
+                    // Anomaly detection
+                    const anomalies = detectAnomalies(data);
+                    detectedAnomalies.push(...anomalies);
+                    
+                    if (anomalies.length > 0) {
+                        addLog(`Detected ${anomalies.length} anomalies for ${city}`, 'error');
+                    }
+                    
+                    apiStatus.textContent = 'Active';
+                    
+                    // Update extracted data table (only show last city for clarity)
+                    if (city === cities[cities.length - 1] || !isBatchMode) {
+                        extractedData.innerHTML = '';
+                        const extractedRow = document.createElement('tr');
+                        extractedRow.innerHTML = `
+                            <td>${data.name}</td>
+                            <td>${data.main.temp}°C</td>
+                            <td>${data.main.humidity}%</td>
+                            <td>${data.main.pressure} hPa</td>
+                            <td>${data.wind ? data.wind.speed : 0} m/s</td>
+                            <td>${getWeatherIcon(data.weather[0].main)} ${data.weather[0].description}</td>
+                        `;
+                        extractedData.appendChild(extractedRow);
+                    }
+                    
+                    // Transform data
+                    addLog(`Transforming weather data for ${city}...`, 'info');
+                    
+                    // Simulate transformation delay
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    addLog(`Data transformation completed for ${city}`, 'success');
+                    
+                    // Update transformed data table (only show last city for clarity)
+                    if (city === cities[cities.length - 1] || !isBatchMode) {
+                        transformedData.innerHTML = '';
+                        const transformedRow = document.createElement('tr');
+                        transformedRow.innerHTML = `
+                            <td>${data.name}</td>
+                            <td>${Math.round(data.main.temp)}°C (feels like ${Math.round(data.main.feels_like)}°C)</td>
+                            <td>${data.main.humidity}%</td>
+                            <td>${data.main.pressure} hPa</td>
+                            <td>${data.wind ? data.wind.speed : 0} m/s (${data.wind ? data.wind.deg || 0 : 0}°)</td>
+                            <td>${getWeatherIcon(data.weather[0].main)} ${data.weather[0].description}</td>
+                        `;
+                        transformedData.appendChild(transformedRow);
+                    }
+                    
+                    // Load data to database
+                    addLog(`Loading data to database for ${city}...`, 'info');
+                    dbStatus.textContent = 'Writing...';
+                    
+                    // Simulate database write delay
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                    
+                    addLog(`Successfully loaded weather data to database for ${city}`, 'success');
+                    
+                    // Store processed data
+                    processedData.push({
+                        ...data,
+                        quality: qualityResult.score,
+                        processed_at: new Date()
+                    });
+                    
+                    totalProcessed++;
+                    
+                } catch (error) {
+                    addLog(`Error processing ${city}: ${error.message}`, 'error');
+                }
+            }
+            
+            // Final updates
+            dbStatus.textContent = 'Active';
+            
+            // Update loaded data table with all processed cities
+            loadedData.innerHTML = '';
+            processedData.slice(-5).forEach(data => {  // Show last 5 records
+                const loadedRow = document.createElement('tr');
+                loadedRow.innerHTML = `
+                    <td>${data.name}</td>
+                    <td>${Math.round(data.main.temp)}°C</td>
+                    <td>${data.main.humidity}%</td>
+                    <td>${data.main.pressure} hPa</td>
+                    <td>${data.wind ? data.wind.speed : 0} m/s</td>
+                    <td>${getWeatherIcon(data.weather[0].main)} ${data.weather[0].description}</td>
+                    <td>${data.processed_at.toLocaleDateString()}</td>
+                `;
+                loadedData.appendChild(loadedRow);
+            });
+            
+            // Update statistics
+            const endTime = Date.now();
+            const processingTime = ((endTime - startTime) / 1000).toFixed(2);
+            const averageQuality = totalProcessed > 0 ? Math.round(totalQualityScore / totalProcessed) : 0;
+            
+            totalRecords.textContent = processedData.length.toString();
+            lastUpdated.textContent = new Date().toLocaleTimeString();
+            dataQuality.textContent = `${averageQuality}%`;
+            processingSpeed.textContent = `${processingTime}s`;
+            
+            // Update chart
+            dataChart.data.datasets[0].data = [totalProcessed, totalProcessed, totalProcessed];
+            dataChart.update();
+            
+            // Update anomalies table
+            updateAnomaliesTable();
+            
+            addLog(`ETL process completed! Processed ${totalProcessed} cities in ${processingTime}s`, 'success');
+        });
+        
+        // Forecast functionality
+        getForecastBtn.addEventListener('click', async () => {
+            const city = citySelect.value;
+            
+            addLog(`Fetching 5-day forecast for ${city}...`, 'info');
+            
+            try {
+                // Simulate forecast API call (OpenWeatherMap forecast endpoint)
+                const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric`;
+                const response = await fetch(forecastUrl);
+                
+                if (!response.ok) {
+                    throw new Error('Unable to fetch forecast data');
+                }
+                
+                const data = await response.json();
+                
+                // Process forecast data (group by day and get min/max temps)
+                const dailyForecasts = {};
+                
+                data.list.forEach(item => {
+                    const date = new Date(item.dt * 1000).toLocaleDateString();
+                    if (!dailyForecasts[date]) {
+                        dailyForecasts[date] = {
+                            temps: [],
+                            weather: item.weather[0].description,
+                            icon: item.weather[0].main
+                        };
+                    }
+                    dailyForecasts[date].temps.push(item.main.temp);
+                });
+                
+                // Update forecast table
+                forecastData.innerHTML = '';
+                Object.entries(dailyForecasts).slice(0, 5).forEach(([date, forecast]) => {
+                    const minTemp = Math.min(...forecast.temps);
+                    const maxTemp = Math.max(...forecast.temps);
+                    const confidence = Math.floor(Math.random() * 20) + 80; // Simulate confidence score
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${date}</td>
+                        <td>${Math.round(minTemp)}°C</td>
+                        <td>${Math.round(maxTemp)}°C</td>
+                        <td>${getWeatherIcon(forecast.icon)} ${forecast.weather}</td>
+                        <td>${confidence}%</td>
+                    `;
+                    forecastData.appendChild(row);
+                });
+                
+                addLog(`Successfully loaded 5-day forecast for ${city}`, 'success');
+                
+            } catch (error) {
+                addLog(`Error fetching forecast: ${error.message}`, 'error');
+            }
+        });
+        
+        // View data button
+        viewDataBtn.addEventListener('click', () => {
+            addLog('Viewing data in database...', 'info');
+            if (processedData.length > 0) {
+                addLog(`Found ${processedData.length} records in database`, 'success');
+            } else {
+                addLog('No data found in database', 'info');
+            }
+        });
+        
+        // Clear data button
+        clearDataBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear all data?')) {
+                extractedData.innerHTML = '<tr><td colspan="6" style="text-align: center;">No data extracted yet</td></tr>';
+                transformedData.innerHTML = '<tr><td colspan="6" style="text-align: center;">No data transformed yet</td></tr>';
+                loadedData.innerHTML = '<tr><td colspan="7" style="text-align: center;">No data loaded yet</td></tr>';
+                anomaliesData.innerHTML = '<tr><td colspan="6" style="text-align: center;">No anomalies detected</td></tr>';
+                forecastData.innerHTML = '<tr><td colspan="5" style="text-align: center;">No forecast data available</td></tr>';
+                
+                totalRecords.textContent = '0';
+                lastUpdated.textContent = '-';
+                apiStatus.textContent = 'Inactive';
+                dbStatus.textContent = 'Inactive';
+                dataQuality.textContent = '-';
+                processingSpeed.textContent = '-';
+                
+                // Clear global data
+                processedData = [];
+                detectedAnomalies = [];
+                
+                dataChart.data.datasets[0].data = [0, 0, 0];
+                dataChart.update();
+                
+                addLog('All data has been cleared', 'info');
+            }
+        });
+        
+        // Initialize with sample data
+        addLog('Advanced ETL Pipeline initialized. Ready to process weather data.', 'info');
+    </script>
+</body>
+</html>

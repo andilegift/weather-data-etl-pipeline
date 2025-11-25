@@ -79,4 +79,4 @@ This project is licensed under the MIT License.
 
 ## 👨‍💻 Developer
 
-Developed by [Your Name] - Data Engineering Portfolio Project
+Developed by Andile - Data Engineering Portfolio Project

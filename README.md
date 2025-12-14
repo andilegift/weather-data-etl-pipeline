@@ -76,7 +76,3 @@ This project integrates with the [OpenWeatherMap API](https://openweathermap.org
 ## 📄 License
 
 This project is licensed under the MIT License.
-
-## 👨‍💻 Developer
-
-Developed by Andile - Data Engineering Portfolio Project

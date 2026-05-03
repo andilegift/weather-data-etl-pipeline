@@ -73,6 +73,6 @@ This project integrates with the [OpenWeatherMap API](https://openweathermap.org
 - Real-time dashboard development
 - API integration examples
 
-## 📄 License
+## Developer
 
-This project is licensed under the MIT License.
+[**Andile Gift Shabalala**](https://www.linkedin.com/in/andile-gift-shabalala-2345bb313/)
